@@ -1,0 +1,661 @@
+<!DOCTYPE html>
+<html lang="sr">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Srećan Rođendan, Tata!</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;500;600;700;800&family=Fira+Code:wght@300;400;500;600;700&family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
+  <script type="importmap">
+    { "imports": { "three": "https://unpkg.com/three@0.171.0/build/three.module.js" } }
+  </script>
+  <style>
+    :root {
+      --bg-deep: #060a11;
+      --bg-primary: #0a0f1a;
+      --bg-card: #0f1629;
+      --border-dim: #1a2744;
+      --border-glow: #3b82f6;
+      --text-bright: #e8edf5;
+      --text-mid: #8b9cc0;
+      --text-dim: #3d4f73;
+      --neon-blue: #3b82f6;
+      --neon-cyan: #22d3ee;
+      --neon-green: #34d399;
+      --gold: #f59e0b;
+      --gold-light: #fbbf24;
+      --gold-glow: rgba(245, 158, 11, 0.35);
+    }
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    html { scroll-behavior: smooth; }
+    body {
+      font-family: 'Outfit', sans-serif;
+      background: var(--bg-deep);
+      color: var(--text-bright);
+      min-height: 100vh;
+      overflow-x: hidden;
+    }
+    body::after {
+      content: '';
+      position: fixed; inset: 0; opacity: 0.03;
+      background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+      pointer-events: none; z-index: 9999;
+    }
+    #matrix-bg { position: fixed; inset: 0; z-index: 0; opacity: 0.04; pointer-events: none; }
+
+    /* ═══ HEADER ═══ */
+    .header {
+      position: relative; z-index: 1;
+      min-height: 100vh;
+      display: flex; flex-direction: column;
+      align-items: center; justify-content: center;
+      text-align: center; padding: 1rem 1.5rem;
+    }
+    /* glow replaced by sneak effect */
+    .terminal-prompt {
+      font-family: 'Fira Code', monospace; font-size: 0.8rem;
+      color: var(--neon-green); letter-spacing: 0.03em;
+      margin-bottom: 1rem; opacity: 0;
+      animation: slideIn 0.7s ease forwards 0.2s;
+    }
+    .terminal-prompt .caret {
+      display: inline-block; width: 7px; height: 1.15em;
+      background: var(--neon-green); margin-left: 3px;
+      vertical-align: text-bottom; animation: blink 1s step-end infinite;
+    }
+    @keyframes blink { 50% { opacity: 0; } }
+    @keyframes slideIn {
+      from { opacity: 0; transform: translateY(12px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    /* Three.js sneak container — FULLSCREEN */
+    #sneak-container {
+      position: absolute;
+      inset: 0;
+      z-index: 0;
+      cursor: crosshair;
+      opacity: 0;
+      animation: fadeIn 1.5s ease forwards 0.3s;
+    }
+    @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+    #sneak-container canvas { display: block; }
+
+    /* ═══ NEON BUTTON ═══ */
+    .neon-btn {
+      position: relative; display: inline-flex; align-items: center; gap: 0.5rem;
+      border: 1px solid rgba(59,130,246,0.25); background: rgba(59,130,246,0.06);
+      color: var(--text-bright); font-family: 'Fira Code', monospace;
+      font-size: 0.85rem; font-weight: 500; border-radius: 9999px;
+      padding: 0.6rem 2rem; cursor: pointer; transition: all 0.4s ease;
+      text-decoration: none;
+    }
+    .neon-btn:hover {
+      background: rgba(59,130,246,0.02); border-color: rgba(59,130,246,0.5);
+      box-shadow: 0 0 20px rgba(59,130,246,0.12);
+    }
+    .neon-btn .gl-t, .neon-btn .gl-b {
+      position: absolute; height: 1px; width: 60%; left: 20%;
+      background: linear-gradient(90deg, transparent, var(--neon-blue), transparent);
+      transition: opacity 0.5s ease;
+    }
+    .neon-btn .gl-t { top: 0; opacity: 0; }
+    .neon-btn .gl-b { bottom: -1px; opacity: 0; }
+    .neon-btn:hover .gl-t { opacity: 0.9; }
+    .neon-btn:hover .gl-b { opacity: 0.35; }
+    .neon-btn-lg { padding: 0.75rem 2.5rem; font-size: 0.95rem; }
+
+    .header-btn-wrap { opacity: 0; animation: slideIn 0.9s ease forwards 1.2s; }
+
+    .scroll-hint { margin-top: 3rem; opacity: 0; animation: slideIn 0.9s ease forwards 1.5s; }
+    .scroll-hint p {
+      font-family: 'Fira Code', monospace; font-size: 0.7rem;
+      text-transform: uppercase; letter-spacing: 0.25em;
+      color: var(--text-dim); margin-bottom: 0.75rem;
+    }
+    .scroll-chevron {
+      width: 18px; height: 18px; margin: 0 auto;
+      border-right: 1.5px solid var(--neon-blue);
+      border-bottom: 1.5px solid var(--neon-blue);
+      transform: rotate(45deg); animation: bob 2.5s ease-in-out infinite; opacity: 0.5;
+    }
+    @keyframes bob {
+      0%, 100% { transform: rotate(45deg) translateY(0); opacity: 0.4; }
+      50% { transform: rotate(45deg) translateY(6px); opacity: 0.8; }
+    }
+
+    /* ═══ MONTH SECTION ═══ */
+    .month-section { position: relative; z-index: 1; max-width: 1000px; margin: 0 auto; padding: 0 1.5rem 2rem; }
+    .month-label {
+      display: flex; align-items: center; gap: 0.75rem;
+      margin-bottom: 1.5rem; padding-top: 2rem;
+    }
+    .month-label h2 {
+      font-family: 'Syne', sans-serif; font-size: 1.4rem;
+      font-weight: 700; letter-spacing: -0.02em;
+    }
+    .month-label .line { flex: 1; height: 1px; background: var(--border-dim); }
+    .month-label .tag {
+      font-family: 'Fira Code', monospace; font-size: 0.65rem;
+      color: var(--neon-green); opacity: 0.6;
+    }
+
+    /* ═══ GRID ═══ */
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(115px, 1fr));
+      gap: 0.75rem;
+    }
+    @media (min-width: 768px) { .grid { grid-template-columns: repeat(7, 1fr); } }
+    @media (max-width: 500px) { .grid { grid-template-columns: repeat(4, 1fr); gap: 0.55rem; } }
+
+    /* ═══ CARD ═══ */
+    .card {
+      position: relative; aspect-ratio: 1; border-radius: 10px;
+      overflow: hidden; border: 1px solid var(--border-dim);
+      background: var(--bg-card); cursor: pointer;
+      transition: all 0.35s cubic-bezier(0.4,0,0.2,1);
+      opacity: 0; transform: translateY(14px);
+    }
+    .card.show { opacity: 1; transform: translateY(0); }
+    .card:hover {
+      border-color: var(--border-glow); transform: translateY(-3px);
+      box-shadow: 0 6px 24px rgba(59,130,246,0.12);
+    }
+    .card.locked { cursor: default; opacity: 0; }
+    .card.locked.show { opacity: 0.25; }
+    .card.locked:hover { transform: translateY(0); border-color: var(--border-dim); box-shadow: none; }
+    .card-content {
+      position: relative; z-index: 1; width: 100%; height: 100%;
+      display: flex; flex-direction: column; align-items: center; justify-content: center;
+    }
+    .card-num {
+      font-family: 'Syne', sans-serif; font-size: 1.6rem;
+      font-weight: 800; letter-spacing: -0.03em; color: var(--text-bright);
+    }
+    .card.locked .card-num { color: var(--text-dim); }
+    .card-sub {
+      font-family: 'Fira Code', monospace; font-size: 0.55rem;
+      color: var(--text-mid); margin-top: 2px; opacity: 0.6;
+    }
+    .card.locked .card-sub { color: var(--text-dim); }
+    .card-hint {
+      font-family: 'Fira Code', monospace; font-size: 0.55rem;
+      color: var(--neon-blue); margin-top: 4px; opacity: 0.7;
+    }
+    .lock-svg { width: 12px; height: 12px; margin-top: 5px; color: var(--text-dim); opacity: 0.4; }
+
+    /* Birthday hero */
+    .card.bday {
+      border-color: rgba(245,158,11,0.35);
+      background: linear-gradient(160deg, #140f00 0%, #1c1600 50%, #0f1629 100%);
+      grid-column: span 2; grid-row: span 2; aspect-ratio: auto;
+    }
+    @media (max-width: 500px) { .card.bday { grid-column: span 2; grid-row: span 2; } }
+    .card.bday:hover { border-color: var(--gold); box-shadow: 0 8px 40px var(--gold-glow); }
+    .card.bday .card-num {
+      font-size: clamp(2.5rem, 5vw, 3.5rem);
+      background: linear-gradient(135deg, var(--gold), var(--gold-light));
+      -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+      background-clip: text; filter: drop-shadow(0 0 12px var(--gold-glow));
+    }
+    .card.bday .card-hint { color: var(--gold); font-size: 0.7rem; opacity: 0.9; }
+    .bday-emoji { font-size: 1.8rem; margin-bottom: 0.4rem; }
+
+    /* Pixel overlay */
+    .px-layer { position: absolute; inset: 0; pointer-events: none; z-index: 0; overflow: hidden; }
+    .px-layer canvas { width: 100%; height: 100%; }
+
+    /* ═══ MODAL ═══ */
+    .overlay {
+      position: fixed; inset: 0;
+      background: rgba(4,6,12,0.85); backdrop-filter: blur(12px);
+      -webkit-backdrop-filter: blur(12px);
+      z-index: 1000; display: flex; align-items: center; justify-content: center;
+      padding: 1.5rem; opacity: 0; pointer-events: none; transition: opacity 0.3s ease;
+    }
+    .overlay.open { opacity: 1; pointer-events: auto; }
+    .dialog {
+      background: var(--bg-primary); border: 1px solid var(--border-dim);
+      border-radius: 16px; width: 100%; max-width: 500px; max-height: 85vh;
+      overflow-y: auto; transform: scale(0.92) translateY(16px);
+      transition: transform 0.35s cubic-bezier(0.4,0,0.2,1);
+    }
+    .overlay.open .dialog { transform: scale(1) translateY(0); }
+    .dialog-head { padding: 1.75rem 1.75rem 1rem; border-bottom: 1px solid var(--border-dim); }
+    .dialog-badge {
+      display: inline-flex; align-items: center; gap: 0.4rem;
+      font-family: 'Fira Code', monospace; font-size: 0.7rem;
+      color: var(--neon-blue); background: rgba(59,130,246,0.08);
+      border: 1px solid rgba(59,130,246,0.15); border-radius: 999px;
+      padding: 0.2rem 0.7rem; margin-bottom: 0.75rem;
+    }
+    .dialog-badge.gold { color: var(--gold); background: rgba(245,158,11,0.08); border-color: rgba(245,158,11,0.2); }
+    .dialog-badge svg { width: 12px; height: 12px; }
+    .dialog-title { font-family: 'Syne', sans-serif; font-size: 1.3rem; font-weight: 700; letter-spacing: -0.02em; }
+    .dialog-body { padding: 1.5rem 1.75rem; }
+    .dialog-msg {
+      font-family: 'Outfit', sans-serif; font-size: 0.95rem;
+      line-height: 1.75; color: var(--text-mid); margin-bottom: 1.5rem;
+    }
+    .dialog-msg code {
+      font-family: 'Fira Code', monospace; background: rgba(59,130,246,0.08);
+      color: var(--neon-cyan); padding: 0.1em 0.35em; border-radius: 4px; font-size: 0.85em;
+    }
+    .dialog-img {
+      width: 100%; aspect-ratio: 16/10; background: var(--bg-card);
+      border: 1px dashed var(--border-dim); border-radius: 10px;
+      display: flex; flex-direction: column; align-items: center;
+      justify-content: center; gap: 0.4rem; color: var(--text-dim);
+      font-size: 0.75rem; margin-bottom: 1.5rem;
+    }
+    .dialog-img svg { width: 28px; height: 28px; opacity: 0.4; }
+    .dialog-foot { padding: 0.75rem 1.75rem 1.5rem; display: flex; justify-content: center; }
+
+    /* ═══ FOOTER ═══ */
+    .foot {
+      position: relative; z-index: 1; text-align: center;
+      padding: 3rem 1.5rem; border-top: 1px solid var(--border-dim);
+    }
+    .foot p { font-family: 'Fira Code', monospace; font-size: 0.7rem; color: var(--text-dim); letter-spacing: 0.04em; }
+    .foot span { color: var(--neon-green); }
+  </style>
+</head>
+<body>
+
+<canvas id="matrix-bg"></canvas>
+
+<header class="header">
+  <div id="sneak-container"></div>
+
+  <div class="terminal-prompt" style="position:fixed; top:1.5rem; left:45%; transform:translateX(-50%); z-index:100;">
+    $ ./birthday --tata --mart-31<span class="caret"></span>
+  </div>
+</header>
+
+<div id="cal"></div>
+
+<!-- MODAL -->
+<div class="overlay" id="overlay">
+  <div class="dialog">
+    <div class="dialog-head">
+      <div class="dialog-badge" id="dBadge">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+        <span id="dBadgeText"></span>
+      </div>
+      <h3 class="dialog-title" id="dTitle"></h3>
+    </div>
+    <div class="dialog-body">
+      <p class="dialog-msg" id="dMsg"></p>
+      <div class="dialog-img">
+        <img id="dImg" src="" alt="" style="display:none; width:100%; height:100%; object-fit:cover; border-radius:10px;" />
+      </div>
+    </div>
+    <div class="dialog-foot">
+      <button class="neon-btn" id="dClose"><span class="gl-t"></span><span class="gl-b"></span>Zatvori</button>
+    </div>
+  </div>
+</div>
+
+<footer class="foot">
+  <p><span>/*</span> Sa ljubavlju od tvog sina — kompajlirano bez grešaka <span>*/</span></p>
+</footer>
+
+<!-- ═══ THREE.JS SNEAK HEADER ═══ -->
+<script type="module">
+import * as THREE from 'three';
+
+const container = document.getElementById('sneak-container');
+if (container) {
+  const scene = new THREE.Scene();
+  scene.background = new THREE.Color(0x060a11);
+
+  let aspect = container.clientWidth / container.clientHeight;
+  const camDist = 3.5;
+  const camera = new THREE.OrthographicCamera(
+    -camDist * aspect, camDist * aspect, camDist, -camDist, 0.01, 1000
+  );
+  camera.position.set(0, -10, 4);
+  camera.lookAt(0, 0, 0);
+
+  const renderer = new THREE.WebGLRenderer({ antialias: true });
+  renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+  renderer.setSize(container.clientWidth, container.clientHeight);
+  renderer.domElement.style.display = 'block';
+  container.appendChild(renderer.domElement);
+
+  function createTextTexture(text, text2) {
+    const svg = `
+      <svg width="2048" height="1024" xmlns="http://www.w3.org/2000/svg">
+        <rect width="100%" height="100%" fill="#060a11"/>
+        <text x="45%" y="40%"
+              font-family="Syne, Arial, sans-serif"
+              font-size="180"
+              font-weight="800"
+              text-anchor="middle"
+              dominant-baseline="middle"
+              fill="#e8edf5">${text}</text>
+        <text x="45%" y="68%"
+              font-family="Syne, Arial, sans-serif"
+              font-size="180"
+              font-weight="800"
+              text-anchor="middle"
+              dominant-baseline="middle"
+              fill="#e8edf5">${text2}</text>
+      </svg>`;
+    const img = new Image();
+    const blob = new Blob([svg], { type: 'image/svg+xml' });
+    const url = URL.createObjectURL(blob);
+    return new Promise(resolve => {
+      img.onload = () => {
+        const c = document.createElement('canvas');
+        c.width = 2048; c.height = 1024;
+        const ctx = c.getContext('2d');
+        ctx.imageSmoothingEnabled = true;
+        ctx.imageSmoothingQuality = 'high';
+        ctx.drawImage(img, 0, 0);
+        const tex = new THREE.CanvasTexture(c);
+        tex.generateMipmaps = false;
+        tex.minFilter = THREE.LinearFilter;
+        tex.magFilter = THREE.LinearFilter;
+        URL.revokeObjectURL(url);
+        resolve(tex);
+      };
+      img.src = url;
+    });
+  }
+
+  const mat = new THREE.ShaderMaterial({
+    uniforms: {
+      uTexture: { value: null },
+      uDisplacement: { value: new THREE.Vector3(1000, 1000, 1000) },
+    },
+    vertexShader: `
+      varying vec2 vUv;
+      uniform vec3 uDisplacement;
+      float easeInOutCubic(float x) {
+        return x < 0.5 ? 4.0 * x * x * x : 1.0 - pow(-2.0 * x + 2.0, 3.0) / 2.0;
+      }
+      float map(float v, float a, float b, float c, float d) {
+        return c + (v - a) * (d - c) / (b - a);
+      }
+      void main() {
+        vUv = uv;
+        vec3 np = position;
+        vec4 wp = modelMatrix * vec4(position, 1.0);
+        float dist = length(uDisplacement - wp.xyz);
+        float minD = 3.0;
+        if (dist < minD) {
+          float dm = map(dist, 0.0, minD, 1.0, 0.0);
+          np.z += easeInOutCubic(dm) * 1.0;
+        }
+        gl_Position = projectionMatrix * modelViewMatrix * vec4(np, 1.0);
+      }`,
+    fragmentShader: `
+      varying vec2 vUv;
+      uniform sampler2D uTexture;
+      void main() {
+        vec4 c = texture2D(uTexture, vUv);
+        if (c.a < 0.1) discard;
+        gl_FragColor = vec4(c.rgb, 1.0);
+      }`,
+    transparent: true, depthWrite: false, side: THREE.FrontSide,
+  });
+
+  createTextTexture('SREĆAN', 'ROĐENDAN').then(tex => { mat.uniforms.uTexture.value = tex; });
+
+  const geo = new THREE.PlaneGeometry(20, 20, 120, 120);
+  const plane = new THREE.Mesh(geo, mat);
+  plane.rotation.z = Math.PI / 4;
+  scene.add(plane);
+
+  const raycaster = new THREE.Raycaster();
+  const pointer = new THREE.Vector2();
+
+  window.addEventListener('pointermove', e => {
+    const b = container.getBoundingClientRect();
+    pointer.x = ((e.clientX - b.left) / b.width) * 2 - 1;
+    pointer.y = -((e.clientY - b.top) / b.height) * 2 + 1;
+    raycaster.setFromCamera(pointer, camera);
+    const hits = raycaster.intersectObject(plane);
+    if (hits.length > 0) mat.uniforms.uDisplacement.value.copy(hits[0].point);
+  });
+
+  document.addEventListener('pointerleave', () => {
+    mat.uniforms.uDisplacement.value.set(1000, 1000, 1000);
+  });
+
+  window.addEventListener('resize', () => {
+    aspect = container.clientWidth / container.clientHeight;
+    camera.left = -camDist * aspect;
+    camera.right = camDist * aspect;
+    camera.updateProjectionMatrix();
+    renderer.setSize(container.clientWidth, container.clientHeight);
+  });
+
+  (function loop() { requestAnimationFrame(loop); renderer.render(scene, camera); })();
+}
+</script>
+
+<script>
+window.scrollTo(0, 0);
+// ═══ MATRIX ═══
+(function() {
+  const c = document.getElementById('matrix-bg'), ctx = c.getContext('2d');
+  let w, h, cols, drops;
+  const ch = '01{}[]<>;:/\\|_';
+  function rs() { w = c.width = innerWidth; h = c.height = innerHeight; cols = Math.floor(w / 14); drops = Array(cols).fill(1); }
+  rs(); addEventListener('resize', rs);
+  (function lp() {
+    ctx.fillStyle = 'rgba(6,10,17,0.18)'; ctx.fillRect(0, 0, w, h);
+    ctx.fillStyle = '#3b82f6'; ctx.font = '13px "Fira Code",monospace';
+    for (let i = 0; i < drops.length; i++) {
+      ctx.fillText(ch[Math.floor(Math.random() * ch.length)], i * 14, drops[i] * 14);
+      if (drops[i] * 14 > h && Math.random() > 0.975) drops[i] = 0; drops[i]++;
+    }
+    requestAnimationFrame(lp);
+  })();
+})();
+
+// ═══ DATE HELPERS ═══
+const monthNames = ['januar','februar','mart','april','maj','jun','jul','avgust','septembar','oktobar','novembar','decembar'];
+const startDate = new Date(2026, 2, 31); // March 31
+const endDate = new Date(2026, 3, 30);   // April 30
+
+function dateKey(d) { return d.getFullYear()+'-'+(d.getMonth()+1)+'-'+d.getDate(); }
+function formatDate(d) { return d.getDate() + '. ' + monthNames[d.getMonth()] + ' 2026.'; }
+
+// ═══ GENERATE ALL DATES ═══
+const allDates = [];
+for (let d = new Date(startDate); d <= endDate; d.setDate(d.getDate() + 1)) {
+  allDates.push(new Date(d));
+}
+
+// ═══ MESSAGES ═══
+const msgs = [
+  // Day 1 — March 31 (BIRTHDAY)
+  { t: "SREĆAN ROĐENDAN, TATA!", m: "Danas je tvoj dan! Ovo je kalendar julekalender u aprilu. Svakog dana otvori novu karticu, a u svakoj te čeka nešto iz srca. Ti si osoba koja me inspiriše svakog dana i ovo je moj mali način da pokušam da ti se zahvalim za sve to. Korak po korak, dan po dan.", img: "imige refrence/New Project-18.png" },
+  // April 1-30 (indices 1-30)
+  { t: "Novi mesec, isti heroj", m: "April počinje, a ti si i dalje isti — neverovatan. Svaki novi mesec sa tobom je kao novi <code>sprint</code> pun mogućnosti." },
+  { t: "Tvoj code review života", m: "Kad pogledaš unazad, svaki tvoj izbor bio je dobro osmišljen. Tvoj <code>code review</code> života zaslužuje samo <code>LGTM</code>." },
+  { t: "Snaga u tišini", m: "Ne moraš uvek da budeš najglasniji u sobi. Tvoja tiha snaga i mirnoća su tvoj superpower. To je ono što te čini pravim liderom." },
+  { t: "Porodični architect", m: "Ti si <code>software architect</code> naše porodice — svaka odluka je promišljena, svaka struktura čvrsta." },
+  { t: "Nastavi da sanjaš", m: "Nikad nemoj prestati da sanjariš. Svaki veliki projekat počeo je kao nečija \"luda\" ideja. A ti si pun takvih ideja." },
+  { t: "Tvoja disciplina", m: "Ono što te odvaja od ostalih? Disciplina. Ne čekaš inspiraciju — ti sediš i radiš. I to je razlog tvog uspeha." },
+  { t: "assert(tata.isKind())", m: "<code>assert(tata.isKind() === true)</code> — ovaj test nikad nije pao. Tvoja dobrota je konstanta u svetu punom promenljivih." },
+  { t: "Lider bez titule", m: "Ne treba ti titula da bi bio lider. Ljudi te prate jer veruješ u njih, slušaš ih i daješ im prostor da rastu." },
+  { t: "Upornost", m: "Sećaš se onih teških dana? Izdržao si sve. Svaki <code>bug</code> u životu si rešio. Svaki. I zato si ovde gde jesi." },
+  { t: "Tvoj uticaj", m: "Možda toga nisi svestan, ali tvoj uticaj na ljude oko tebe je ogroman. Svojom energijom menjaš svaki prostor u koji uđeš." },
+  { t: "Full stack čovek", m: "Ti nisi samo <code>full-stack</code> programer — ti si full-stack čovek. Od emocija do logike, pokrivaš sve." },
+  { t: "Pauza je OK", m: "Danas te podsećam: pauzirati nije slabost. I najbolji serveri imaju maintenance window. Odmori se kad treba." },
+  { t: "Tvoja kreativnost", m: "Kreativnost nije samo za umetnike. Svaki put kad nađeš elegantno rešenje za kompleksan problem — to je čista umetnost." },
+  { t: "Zahvalnost", m: "Hvala ti što si uvek tu. Hvala ti na svakom savetu, svakom zagrljaju, svakoj lekciji. Nema dovoljno reči." },
+  { t: "Polovina aprila", m: "Pola aprila! <code>progress: [████████░░░░░░] 50%</code> — na pola smo puta. Svaka poruka do sada je bila iskrena, i svaka sledeća će biti." },
+  { t: "Budi ponosan", m: "Danas te podsećam da budeš ponosan na sebe. Ne na ono što imaš, nego na ono što si postigao i koliko si porastao." },
+  { t: "Tvoja strpljivost", m: "Strpljivost je vrlina koju retko ko ima. Ti je imaš u izobilju — i to je ono što te čini neverovatnim mentorom." },
+  { t: "Uvek napred", m: "Nisi tip koji se zadovoljava prosečnim. Uvek guraš napred, uvek tražiš bolji način. I to je inspiracija za sve nas." },
+  { t: "Smej se više", m: "Danas nema duboke poruke — samo podsetnik da se nasmeješ. Smeši ti stoji bolje od bilo kog <code>syntax</code>-a." },
+  { t: "Mentorstvo", m: "Svaki dobar programer ima nekoga ko ga je naučio da razmišlja. Ti si taj neko za mnoge ljude. I to je tvoje nasleđe." },
+  { t: "Tvoje zdravlje", m: "Podsetnik: tvoje zdravlje je najvažniji <code>deployment</code>. Pij vodu, prošetaj, protegni se. Tvoje telo je hardver koji ne možeš zameniti." },
+  { t: "Neustrašivost", m: "Nije hrabrost odsustvo straha — nego odluka da ideš napred uprkos njemu. I ti to radiš svaki dan." },
+  { t: "Tvoja porodica", m: "Porodica je tvoj najvažniji projekat — i rezultati su fenomenalni. Svako od nas nosi deo tebe u sebi." },
+  { t: "Veruj procesu", m: "Ponekad rezultati kasne. Ali ako je proces dobar — <code>trust the process</code> — ishod će doći. Veruj sebi." },
+  { t: "Kafica za dušu", m: "Ova poruka je tvoja jutarnja kafica za dušu. Neka ti dan bude lep kao prvi <code>commit</code> na čistom projektu." },
+  { t: "Nasljeđe", m: "Tvoje nasleđe nije samo u kodu koji si napisao — već u ljudima koje si formirao, vrednostima koje si preneo." },
+  { t: "Hrabrost da budeš ti", m: "U svetu gde svi pokušavaju da se uklope, ti imaš hrabrost da budeš autentičan. To je retkost i to je predivno." },
+  { t: "Maleni koraci", m: "Veliki ciljevi se postižu malim koracima. Svaki dan, jedna stvar. <code>incrementalProgress++</code>. Ti to već znaš." },
+  { t: "Skoro kraj", m: "Još samo dva dana! Svaka preostala poruka je posebna — baš kao i ti. Hvala ti što si čitao svaki dan." },
+  { t: "Hvala ti za sve", m: "🎉 Poslednja poruka! Mesec dana — od tvog rođendana do danas. Svaka poruka je bila iskrena, svaka od srca.<br><br>Ti si najjači, najpametniji i najbliži čovek u mom životu. Hvala ti što si moj tata. Hvala ti što si TI.<br><br><code>console.log(\"Volim te zauvek, tata.\");</code><br><br>💙" }
+];
+
+// ═══ UNLOCK LOGIC ═══
+const now = new Date();
+function isUnlocked(date) {
+  return now >= date;
+}
+
+// ═══ GROUP BY MONTH ═══
+const monthGroups = {};
+allDates.forEach((d, i) => {
+  const key = d.getFullYear() + '-' + d.getMonth();
+  if (!monthGroups[key]) monthGroups[key] = { month: d.getMonth(), year: d.getFullYear(), items: [] };
+  monthGroups[key].items.push({ date: d, index: i });
+});
+
+// ═══ RENDER ═══
+const calEl = document.getElementById('cal');
+
+Object.values(monthGroups).forEach(group => {
+  const section = document.createElement('section');
+  section.className = 'month-section';
+
+  const label = document.createElement('div');
+  label.className = 'month-label';
+  label.innerHTML = `
+    <h2>${monthNames[group.month].charAt(0).toUpperCase() + monthNames[group.month].slice(1)} ${group.year}.</h2>
+    <div class="line"></div>
+    <span class="tag">// ${group.items.length} dana</span>`;
+  section.appendChild(label);
+
+  const grid = document.createElement('div');
+  grid.className = 'grid';
+
+  group.items.forEach(({ date, index }) => {
+    const ok = isUnlocked(date);
+    const isBday = index === 0;
+    const isLast = index === allDates.length - 1 && allDates.length <= 31;
+    const el = document.createElement('div');
+    el.className = 'card' + (ok ? '' : ' locked') + (isBday ? ' bday' : '');
+
+    const lockSVG = '<svg class="lock-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>';
+
+    el.innerHTML = `
+      <div class="px-layer" data-idx="${index}"></div>
+      <div class="card-content">
+        ${isBday ? '<div class="bday-emoji">🎂</div>' : ''}
+        <span class="card-num">${date.getDate()}</span>
+        <span class="card-sub">${monthNames[date.getMonth()].slice(0, 3)}</span>
+        ${ok
+          ? `<span class="card-hint">${isBday ? 'Srećan Rođendan!' : isLast ? 'Poslednja!' : '▸'}</span>`
+          : lockSVG}
+      </div>`;
+
+    if (ok) el.addEventListener('click', () => openModal(index, date));
+    grid.appendChild(el);
+  });
+
+  section.appendChild(grid);
+  calEl.appendChild(section);
+});
+
+// ═══ PIXEL CANVAS ═══
+class Px {
+  constructor(cvs, ctx, x, y, col, spd, del) {
+    this.ctx = ctx; this.x = x; this.y = y; this.color = col;
+    this.speed = (Math.random() * 0.8 + 0.1) * spd;
+    this.size = 0; this.step = Math.random() * 0.4;
+    this.min = 0.5; this.maxI = 2;
+    this.max = Math.random() * (this.maxI - this.min) + this.min;
+    this.delay = del; this.cnt = 0;
+    this.cntStep = Math.random() * 4 + (cvs.width + cvs.height) * 0.01;
+    this.idle = false; this.rev = false; this.shim = false;
+  }
+  draw() { const o = this.maxI * 0.5 - this.size * 0.5; this.ctx.fillStyle = this.color; this.ctx.fillRect(this.x + o, this.y + o, this.size, this.size); }
+  appear() {
+    this.idle = false;
+    if (this.cnt <= this.delay) { this.cnt += this.cntStep; return; }
+    if (this.size >= this.max) this.shim = true;
+    if (this.shim) this.shimmer(); else this.size += this.step; this.draw();
+  }
+  disappear() { this.shim = false; this.cnt = 0; if (this.size <= 0) { this.idle = true; return; } this.size -= 0.1; this.draw(); }
+  shimmer() {
+    if (this.size >= this.max) this.rev = true;
+    else if (this.size <= this.min) this.rev = false;
+    this.size += this.rev ? -this.speed : this.speed;
+  }
+}
+
+function initPx(container, colors) {
+  const cvs = document.createElement('canvas'), ctx = cvs.getContext('2d');
+  container.appendChild(cvs);
+  const gap = 6, spd = 0.035; let pxs = [], anim = null, tp = performance.now(); const iv = 1000/60;
+  function sz() {
+    const r = container.getBoundingClientRect(), dpr = devicePixelRatio || 1;
+    cvs.width = r.width * dpr; cvs.height = r.height * dpr;
+    cvs.style.width = r.width + 'px'; cvs.style.height = r.height + 'px';
+    ctx.setTransform(1,0,0,1,0,0); ctx.scale(dpr, dpr); pxs = [];
+    for (let x = 0; x < r.width; x += gap) for (let y = 0; y < r.height; y += gap) {
+      pxs.push(new Px(cvs, ctx, x, y, colors[Math.floor(Math.random() * colors.length)], spd, Math.sqrt(x*x + (r.height-y)**2)));
+    }
+  }
+  sz();
+  function run(name) {
+    if (anim) cancelAnimationFrame(anim);
+    (function lp() { anim = requestAnimationFrame(lp); const n = performance.now(); if (n-tp < iv) return; tp = n - ((n-tp)%iv);
+      ctx.clearRect(0,0,cvs.width,cvs.height); let done = true;
+      for (const p of pxs) { p[name](); if (!p.idle) done = false; }
+      if (done) { cancelAnimationFrame(anim); anim = null; }
+    })();
+  }
+  const par = container.parentElement;
+  par.addEventListener('mouseenter', () => run('appear'));
+  par.addEventListener('mouseleave', () => run('disappear'));
+}
+
+document.querySelectorAll('.card:not(.locked) .px-layer').forEach(el => {
+  const i = +el.dataset.idx;
+  initPx(el, i === 0 ? ['#f59e0b','#fbbf24','#d97706'] : ['#1a2744','#2563eb','#3b82f6']);
+});
+
+// ═══ SCROLL REVEAL ═══
+const obs = new IntersectionObserver(entries => {
+  entries.forEach(e => { if (e.isIntersecting) e.target.classList.add('show'); });
+}, { threshold: 0.05 });
+document.querySelectorAll('.card').forEach((c, i) => { c.style.transitionDelay = (i % 28) * 30 + 'ms'; obs.observe(c); });
+
+// ═══ MODAL ═══
+const ov = document.getElementById('overlay');
+function openModal(index, date) {
+  const d = msgs[index]; if (!d) return;
+  const bday = index === 0;
+  document.getElementById('dBadge').className = 'dialog-badge' + (bday ? ' gold' : '');
+  document.getElementById('dBadgeText').textContent = formatDate(date);
+  document.getElementById('dTitle').textContent = d.t;
+  document.getElementById('dMsg').innerHTML = d.m;
+  const imgEl = document.getElementById('dImg');
+  if (d.img) {
+    imgEl.src = d.img;
+    imgEl.style.display = 'block';
+  } else {
+    imgEl.style.display = 'none';
+  }
+  ov.classList.add('open'); document.body.style.overflow = 'hidden';
+}
+function closeModal() { ov.classList.remove('open'); document.body.style.overflow = ''; }
+document.getElementById('dClose').onclick = closeModal;
+ov.addEventListener('click', e => { if (e.target === ov) closeModal(); });
+document.addEventListener('keydown', e => { if (e.key === 'Escape') closeModal(); });
+</script>
+</body>
+</html>
